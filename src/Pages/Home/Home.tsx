@@ -12,7 +12,7 @@ function Home() {
 				<CardContent>
 					<Typography variant="body1">
 						Welcome to the Shop Manager! Use the navigation above to manage your
-						items and entries.
+						items and create finished products.
 					</Typography>
 				</CardContent>
 			</Card>

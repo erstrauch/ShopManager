@@ -31,6 +31,18 @@ function Navigation() {
 					>
 						Items
 					</Button>
+					<Button
+						color="inherit"
+						component={Link}
+						to="/product"
+						sx={{
+							fontWeight: location.pathname === '/product' ? 'bold' : 'normal',
+							textDecoration:
+								location.pathname === '/product' ? 'underline' : 'none',
+						}}
+					>
+						Products
+					</Button>
 				</Box>
 			</Toolbar>
 		</AppBar>
