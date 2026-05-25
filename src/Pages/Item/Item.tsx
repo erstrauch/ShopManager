@@ -1,4 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import {
+	FormControl,
+	InputLabel,
+	MenuItem,
+	Select,
+	IconButton,
+	Tooltip,
+} from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
+import ArrowDownward from '@mui/icons-material/ArrowDownward';
+import ArrowUpward from '@mui/icons-material/ArrowUpward';
 import {
 	Box,
 	Button,
@@ -40,25 +51,30 @@ function newId() {
 }
 
 export default function Item() {
+	// Cache parsed items in a ref so we only parse localStorage once per session
+	const parsedItemsRef = useRef<Item[] | null>(null);
 	const [items, setItems] = useState<Item[]>(() => {
+		if (parsedItemsRef.current) return parsedItemsRef.current;
 		if (typeof window === 'undefined' || !window.localStorage) {
 			return [];
 		}
-
 		const saved = localStorage.getItem('shopManagerItems');
 		if (!saved) {
+			parsedItemsRef.current = [];
 			return [];
 		}
-
 		try {
 			const parsed = JSON.parse(saved);
-			console.log('Loading items from localStorage:', parsed);
-			return Array.isArray(parsed) ? parsed : [];
+			const arr = Array.isArray(parsed) ? parsed : [];
+			parsedItemsRef.current = arr;
+			return arr;
 		} catch (e) {
 			console.error('Failed to parse saved items', e);
+			parsedItemsRef.current = [];
 			return [];
 		}
 	});
+
 	const [entryInputs, setEntryInputs] = useState<
 		Record<string, { uid: string; price: string; count: string }>
 	>({});
@@ -67,12 +83,35 @@ export default function Item() {
 	const [csvError, setCsvError] = useState('');
 	const [csvSuccess, setCsvSuccess] = useState('');
 
+	// Sorting state
+	const [sortField, setSortField] = useState<'name' | 'uid' | 'price'>('name');
+	const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+	const handleSortFieldChange = (
+		event: SelectChangeEvent<'name' | 'uid' | 'price'>,
+	) => {
+		setSortField(event.target.value as 'name' | 'uid' | 'price');
+	};
+	const handleSortDirectionToggle = () => {
+		setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+	};
+
 	useEffect(() => {
 		if (typeof window !== 'undefined' && window.localStorage) {
-			console.log('Saving items to localStorage:', items);
 			localStorage.setItem('shopManagerItems', JSON.stringify(items));
+			parsedItemsRef.current = items;
 		}
 	}, [items]);
+	// Pagination state
+	const [page, setPage] = useState(1);
+	const [itemsPerPage, setItemsPerPage] = useState(10);
+	const handlePageChange = (newPage: number) => setPage(newPage);
+	const handleItemsPerPageChange = (
+		event: React.ChangeEvent<HTMLInputElement>,
+	) => {
+		setItemsPerPage(Number(event.target.value));
+		setPage(1); // Reset to first page when page size changes
+	};
 
 	const handleAddItem = () => {
 		const trimmedName = itemName.trim();
@@ -398,188 +437,367 @@ export default function Item() {
 			{items.length === 0 ? (
 				<Typography>No items added yet.</Typography>
 			) : (
-				<Stack spacing={3}>
-					{items.map((item) => {
-						const entryDraft = entryInputs[item.id] ?? {
-							uid: '',
-							price: '0',
-							count: '1',
-						};
-						const totalPrice = item.entries.reduce(
-							(sum, entry) => sum + entry.price,
-							0,
-						);
-						const totalCount = item.entries.reduce(
-							(sum, entry) => sum + entry.count,
-							0,
-						);
-
-						return (
-							<Card key={item.id} variant="outlined">
-								<CardHeader
-									title={item.name}
-									action={
-										<Button
-											variant="outlined"
-											color="error"
-											onClick={() => handleRemoveItem(item.id)}
-										>
-											Remove Item
-										</Button>
-									}
-								/>
-								<Divider />
-								<CardContent>
-									<Stack spacing={3}>
-										{item.entries.length === 0 ? (
-											<Typography color="text.secondary">
-												No nested entries yet.
-											</Typography>
-										) : (
-											<TableContainer component={Paper} variant="outlined">
-												<Table size="small">
-													<TableHead>
-														<TableRow>
-															<TableCell>UID</TableCell>
-															<TableCell>Price</TableCell>
-															<TableCell>Count</TableCell>
-															<TableCell align="right">Actions</TableCell>
-														</TableRow>
-													</TableHead>
-													<TableBody>
-														{item.entries.map((entry) => (
-															<TableRow key={entry.id}>
-																<TableCell>
-																	<TextField
-																		label="UID"
-																		value={entry.uid}
-																		onChange={(event) =>
-																			updateEntry(
-																				item.id,
-																				entry.id,
-																				'uid',
-																				event.target.value,
-																			)
-																		}
-																		fullWidth
-																		variant="standard"
-																	/>
-																</TableCell>
-																<TableCell>
-																	<TextField
-																		label="Price"
-																		value={entry.price.toString()}
-																		onChange={(event) =>
-																			updateEntry(
-																				item.id,
-																				entry.id,
-																				'price',
-																				event.target.value,
-																			)
-																		}
-																		type="number"
-																		variant="standard"
-																	/>
-																</TableCell>
-																<TableCell>
-																	<TextField
-																		label="Count"
-																		value={entry.count.toString()}
-																		onChange={(event) =>
-																			updateEntry(
-																				item.id,
-																				entry.id,
-																				'count',
-																				event.target.value,
-																			)
-																		}
-																		type="number"
-																		variant="standard"
-																	/>
-																</TableCell>
-																<TableCell align="right">
-																	<Button
-																		variant="outlined"
-																		color="error"
-																		onClick={() =>
-																			removeEntry(item.id, entry.id)
-																		}
-																	>
-																		Remove
-																	</Button>
-																</TableCell>
-															</TableRow>
-														))}
-														<TableRow>
-															<TableCell />
-															<TableCell sx={{ fontWeight: 'bold' }}>
-																Total Price: {totalPrice}
-															</TableCell>
-															<TableCell sx={{ fontWeight: 'bold' }}>
-																Total Count: {totalCount}
-															</TableCell>
-															<TableCell
-																align="right"
-																sx={{ fontWeight: 'bold' }}
-															>
-																{totalCount > 0
-																	? `Cost / Amount: ${(totalPrice / totalCount).toFixed(2)}`
-																	: 'Cost / Amount: -'}
-															</TableCell>
-														</TableRow>
-													</TableBody>
-												</Table>
-											</TableContainer>
-										)}
-
+				<>
+					<Stack
+						direction={{ xs: 'column', sm: 'row' }}
+						spacing={2}
+						sx={{ mb: 2, alignItems: 'center' }}
+					>
+						<FormControl size="small" sx={{ minWidth: 140 }}>
+							<InputLabel
+								id="sort-field-label"
+								sx={{
+									color: '#fff',
+									background: '#222',
+									px: 0.5,
+									borderRadius: 1,
+								}}
+							>
+								Sort by
+							</InputLabel>
+							<Select
+								labelId="sort-field-label"
+								value={sortField}
+								label="Sort by"
+								onChange={handleSortFieldChange}
+								sx={{
+									background: '#fff',
+									color: '#222',
+									'.MuiSelect-icon': { color: '#222' },
+									'.MuiOutlinedInput-notchedOutline': { borderColor: '#fff' },
+								}}
+							>
+								<MenuItem value="name">Name</MenuItem>
+								<MenuItem value="uid">UID</MenuItem>
+								<MenuItem value="price">Price</MenuItem>
+							</Select>
+						</FormControl>
+						<Tooltip
+							title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+						>
+							<IconButton
+								onClick={handleSortDirectionToggle}
+								size="small"
+								sx={{
+									background: '#fff',
+									color: '#222',
+									border: '1px solid #ccc',
+									'&:hover': { background: '#f5f5f5' },
+								}}
+							>
+								{sortDirection === 'asc' ? <ArrowUpward /> : <ArrowDownward />}
+							</IconButton>
+						</Tooltip>
+					</Stack>
+					{/* Pagination controls */}
+					<Stack
+						direction={{ xs: 'column', sm: 'row' }}
+						spacing={2}
+						sx={{ mb: 2, alignItems: 'center' }}
+					>
+						<TextField
+							select
+							label="Items per page"
+							value={itemsPerPage}
+							onChange={handleItemsPerPageChange}
+							size="small"
+							sx={{ width: 140, background: '#fff', color: '#222' }}
+						>
+							{[5, 10, 20, 50, 100].map((n) => (
+								<MenuItem key={n} value={n}>
+									{n}
+								</MenuItem>
+							))}
+						</TextField>
+						<span style={{ color: '#fff' }}>Page {page}</span>
+						<Button
+							variant="outlined"
+							size="small"
+							onClick={() => handlePageChange(Math.max(1, page - 1))}
+							disabled={page === 1}
+							sx={{
+								background: '#fff',
+								color: '#222',
+								border: '1px solid #ccc',
+							}}
+						>
+							Prev
+						</Button>
+						<Button
+							variant="outlined"
+							size="small"
+							onClick={() => handlePageChange(page + 1)}
+							disabled={(() => {
+								// Calculate total pages
+								let sortedItems = [...items];
+								if (sortField === 'name') {
+									sortedItems.sort((a, b) => {
+										const cmp = a.name.localeCompare(b.name);
+										return sortDirection === 'asc' ? cmp : -cmp;
+									});
+								} else if (sortField === 'uid') {
+									sortedItems.sort((a, b) => {
+										const aUid = a.entries[0]?.uid || '';
+										const bUid = b.entries[0]?.uid || '';
+										const cmp = aUid.localeCompare(bUid);
+										return sortDirection === 'asc' ? cmp : -cmp;
+									});
+								} else if (sortField === 'price') {
+									sortedItems.sort((a, b) => {
+										const aPrice = a.entries[0]?.price ?? 0;
+										const bPrice = b.entries[0]?.price ?? 0;
+										const cmp = aPrice - bPrice;
+										return sortDirection === 'asc' ? cmp : -cmp;
+									});
+								}
+								const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
+								return page >= totalPages;
+							})()}
+							sx={{
+								background: '#fff',
+								color: '#222',
+								border: '1px solid #ccc',
+							}}
+						>
+							Next
+						</Button>
+					</Stack>
+					<Stack spacing={3}>
+						{(() => {
+							// Sorting logic for items
+							let sortedItems = [...items];
+							if (sortField === 'name') {
+								sortedItems.sort((a, b) => {
+									const cmp = a.name.localeCompare(b.name);
+									return sortDirection === 'asc' ? cmp : -cmp;
+								});
+							} else if (sortField === 'uid') {
+								sortedItems.sort((a, b) => {
+									const aUid = a.entries[0]?.uid || '';
+									const bUid = b.entries[0]?.uid || '';
+									const cmp = aUid.localeCompare(bUid);
+									return sortDirection === 'asc' ? cmp : -cmp;
+								});
+							} else if (sortField === 'price') {
+								sortedItems.sort((a, b) => {
+									const aPrice = a.entries[0]?.price ?? 0;
+									const bPrice = b.entries[0]?.price ?? 0;
+									const cmp = aPrice - bPrice;
+									return sortDirection === 'asc' ? cmp : -cmp;
+								});
+							}
+							// Pagination logic
+							const startIdx = (page - 1) * itemsPerPage;
+							const pagedItems = sortedItems.slice(
+								startIdx,
+								startIdx + itemsPerPage,
+							);
+							return pagedItems.map((item) => {
+								// ...existing code for rendering each item...
+								const entryDraft = entryInputs[item.id] ?? {
+									uid: '',
+									price: '0',
+									count: '1',
+								};
+								const totalPrice = item.entries.reduce(
+									(sum, entry) => sum + entry.price,
+									0,
+								);
+								const totalCount = item.entries.reduce(
+									(sum, entry) => sum + entry.count,
+									0,
+								);
+								let sortedEntries = [...item.entries];
+								if (sortField === 'uid') {
+									sortedEntries.sort((a, b) => {
+										const cmp = a.uid.localeCompare(b.uid);
+										return sortDirection === 'asc' ? cmp : -cmp;
+									});
+								} else if (sortField === 'price') {
+									sortedEntries.sort((a, b) => {
+										const cmp = a.price - b.price;
+										return sortDirection === 'asc' ? cmp : -cmp;
+									});
+								}
+								return (
+									<Card key={item.id} variant="outlined">
+										<CardHeader
+											title={item.name}
+											action={
+												<Button
+													variant="outlined"
+													color="error"
+													onClick={() => handleRemoveItem(item.id)}
+												>
+													Remove Item
+												</Button>
+											}
+										/>
 										<Divider />
-										<Stack
-											sx={{
-												flexDirection: { xs: 'column', md: 'row' },
-												alignItems: 'flex-end',
-												gap: 2,
-											}}
-										>
-											<TextField
-												label="UID"
-												value={entryDraft.uid}
-												onChange={(event) =>
-													updateItemInput(item.id, 'uid', event.target.value)
-												}
-												fullWidth
-											/>
-											<TextField
-												label="Price"
-												value={entryDraft.price}
-												onChange={(event) =>
-													updateItemInput(item.id, 'price', event.target.value)
-												}
-												type="number"
-												fullWidth
-											/>
-											<TextField
-												label="Count"
-												value={entryDraft.count}
-												onChange={(event) =>
-													updateItemInput(item.id, 'count', event.target.value)
-												}
-												type="number"
-												fullWidth
-											/>
-											<Button
-												variant="outlined"
-												onClick={() => handleAddEntry(item.id)}
-												fullWidth
-											>
-												Add entry
-											</Button>
-										</Stack>
-									</Stack>
-								</CardContent>
-							</Card>
-						);
-					})}
-				</Stack>
+										<CardContent>
+											<Stack spacing={3}>
+												{item.entries.length === 0 ? (
+													<Typography color="text.secondary">
+														No nested entries yet.
+													</Typography>
+												) : (
+													<TableContainer component={Paper} variant="outlined">
+														<Table size="small">
+															<TableHead>
+																<TableRow>
+																	<TableCell>UID</TableCell>
+																	<TableCell>Price</TableCell>
+																	<TableCell>Count</TableCell>
+																	<TableCell align="right">Actions</TableCell>
+																</TableRow>
+															</TableHead>
+															<TableBody>
+																{sortedEntries.map((entry) => (
+																	<TableRow key={entry.id}>
+																		<TableCell>
+																			<TextField
+																				label="UID"
+																				value={entry.uid}
+																				onChange={(event) =>
+																					updateEntry(
+																						item.id,
+																						entry.id,
+																						'uid',
+																						event.target.value,
+																					)
+																				}
+																				fullWidth
+																				variant="standard"
+																			/>
+																		</TableCell>
+																		<TableCell>
+																			<TextField
+																				label="Price"
+																				value={entry.price.toString()}
+																				onChange={(event) =>
+																					updateEntry(
+																						item.id,
+																						entry.id,
+																						'price',
+																						event.target.value,
+																					)
+																				}
+																				type="number"
+																				variant="standard"
+																			/>
+																		</TableCell>
+																		<TableCell>
+																			<TextField
+																				label="Count"
+																				value={entry.count.toString()}
+																				onChange={(event) =>
+																					updateEntry(
+																						item.id,
+																						entry.id,
+																						'count',
+																						event.target.value,
+																					)
+																				}
+																				type="number"
+																				variant="standard"
+																			/>
+																		</TableCell>
+																		<TableCell align="right">
+																			<Button
+																				variant="outlined"
+																				color="error"
+																				onClick={() =>
+																					removeEntry(item.id, entry.id)
+																				}
+																			>
+																				Remove
+																			</Button>
+																		</TableCell>
+																	</TableRow>
+																))}
+																<TableRow>
+																	<TableCell />
+																	<TableCell sx={{ fontWeight: 'bold' }}>
+																		Total Price: {totalPrice}
+																	</TableCell>
+																	<TableCell sx={{ fontWeight: 'bold' }}>
+																		Total Count: {totalCount}
+																	</TableCell>
+																	<TableCell
+																		align="right"
+																		sx={{ fontWeight: 'bold' }}
+																	>
+																		{totalCount > 0
+																			? `Cost / Amount: ${(totalPrice / totalCount).toFixed(2)}`
+																			: 'Cost / Amount: -'}
+																	</TableCell>
+																</TableRow>
+															</TableBody>
+														</Table>
+													</TableContainer>
+												)}
+												<Divider />
+												<Stack
+													sx={{
+														flexDirection: { xs: 'column', md: 'row' },
+														alignItems: 'flex-end',
+														gap: 2,
+													}}
+												>
+													<TextField
+														label="UID"
+														value={entryDraft.uid}
+														onChange={(event) =>
+															updateItemInput(
+																item.id,
+																'uid',
+																event.target.value,
+															)
+														}
+														fullWidth
+													/>
+													<TextField
+														label="Price"
+														value={entryDraft.price}
+														onChange={(event) =>
+															updateItemInput(
+																item.id,
+																'price',
+																event.target.value,
+															)
+														}
+														type="number"
+														fullWidth
+													/>
+													<TextField
+														label="Count"
+														value={entryDraft.count}
+														onChange={(event) =>
+															updateItemInput(
+																item.id,
+																'count',
+																event.target.value,
+															)
+														}
+														type="number"
+														fullWidth
+													/>
+													<Button
+														variant="outlined"
+														onClick={() => handleAddEntry(item.id)}
+														fullWidth
+													>
+														Add entry
+													</Button>
+												</Stack>
+											</Stack>
+										</CardContent>
+									</Card>
+								);
+							});
+						})()}
+					</Stack>
+				</>
 			)}
 		</Box>
 	);
