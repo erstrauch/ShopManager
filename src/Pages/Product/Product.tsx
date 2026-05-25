@@ -80,7 +80,9 @@ export default function Product() {
 	const [productName, setProductName] = useState('');
 	const [selectedItemId, setSelectedItemId] = useState('');
 	const [componentQuantity, setComponentQuantity] = useState('1');
-	const [productComponents, setProductComponents] = useState<ProductComponent[]>([]);
+	const [productComponents, setProductComponents] = useState<
+		ProductComponent[]
+	>([]);
 	const [productError, setProductError] = useState('');
 
 	// Load items from localStorage
@@ -123,7 +125,7 @@ export default function Product() {
 
 		// Check if component already exists
 		const existingIndex = productComponents.findIndex(
-			(comp) => comp.itemId === selectedItemId
+			(comp) => comp.itemId === selectedItemId,
 		);
 
 		if (existingIndex >= 0) {
@@ -132,8 +134,8 @@ export default function Product() {
 				prev.map((comp, index) =>
 					index === existingIndex
 						? { ...comp, quantity: comp.quantity + quantity }
-						: comp
-				)
+						: comp,
+				),
 			);
 		} else {
 			// Add new component
@@ -149,7 +151,7 @@ export default function Product() {
 
 	const handleRemoveComponent = (itemId: string) => {
 		setProductComponents((prev) =>
-			prev.filter((comp) => comp.itemId !== itemId)
+			prev.filter((comp) => comp.itemId !== itemId),
 		);
 	};
 
@@ -193,11 +195,11 @@ export default function Product() {
 
 			const itemTotalPrice = item.entries.reduce(
 				(sum, entry) => sum + entry.price,
-				0
+				0,
 			);
 			const itemTotalCount = item.entries.reduce(
 				(sum, entry) => sum + entry.count,
-				0
+				0,
 			);
 
 			const avgPrice = itemTotalCount > 0 ? itemTotalPrice / itemTotalCount : 0;
@@ -206,7 +208,10 @@ export default function Product() {
 	};
 
 	return (
-		<Box className="product" sx={{ padding: 3, maxWidth: 1000, margin: '0 auto' }}>
+		<Box
+			className="product"
+			sx={{ padding: 3, maxWidth: 1000, margin: '0 auto' }}
+		>
 			<Typography variant="h4" gutterBottom>
 				Products
 			</Typography>
@@ -215,7 +220,8 @@ export default function Product() {
 				<CardContent>
 					<Stack spacing={2}>
 						<Typography variant="body1">
-							Create finished products by combining items that have been added on the Items page.
+							Create finished products by combining items that have been added
+							on the Items page.
 						</Typography>
 
 						<Stack sx={{ flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
@@ -252,7 +258,9 @@ export default function Product() {
 										<Select
 											value={selectedItemId}
 											label="Select Item"
-											onChange={(event) => setSelectedItemId(event.target.value)}
+											onChange={(event) =>
+												setSelectedItemId(event.target.value)
+											}
 										>
 											{items.map((item) => (
 												<MenuItem key={item.id} value={item.id}>
@@ -264,7 +272,9 @@ export default function Product() {
 									<TextField
 										label="Quantity"
 										value={componentQuantity}
-										onChange={(event) => setComponentQuantity(event.target.value)}
+										onChange={(event) =>
+											setComponentQuantity(event.target.value)
+										}
 										type="number"
 										fullWidth
 									/>
@@ -283,7 +293,11 @@ export default function Product() {
 										<Typography variant="subtitle1" sx={{ mt: 2 }}>
 											Components to be added:
 										</Typography>
-										<Stack direction="row" spacing={1} flexWrap="wrap">
+										<Stack
+											direction="row"
+											spacing={1}
+											sx={{ flexWrap: 'wrap' }}
+										>
 											{productComponents.map((comp) => (
 												<Chip
 													key={comp.itemId}
@@ -334,15 +348,25 @@ export default function Product() {
 											</TableHead>
 											<TableBody>
 												{product.components.map((comp) => {
-													const item = items.find((item) => item.id === comp.itemId);
+													const item = items.find(
+														(item) => item.id === comp.itemId,
+													);
 													const itemTotalPrice = item
-														? item.entries.reduce((sum, entry) => sum + entry.price, 0)
+														? item.entries.reduce(
+																(sum, entry) => sum + entry.price,
+																0,
+															)
 														: 0;
 													const itemTotalCount = item
-														? item.entries.reduce((sum, entry) => sum + entry.count, 0)
+														? item.entries.reduce(
+																(sum, entry) => sum + entry.count,
+																0,
+															)
 														: 0;
 													const avgPrice =
-														itemTotalCount > 0 ? itemTotalPrice / itemTotalCount : 0;
+														itemTotalCount > 0
+															? itemTotalPrice / itemTotalCount
+															: 0;
 													const componentCost = avgPrice * comp.quantity;
 
 													return (
@@ -354,7 +378,9 @@ export default function Product() {
 													);
 												})}
 												<TableRow>
-													<TableCell sx={{ fontWeight: 'bold' }}>Total Cost</TableCell>
+													<TableCell sx={{ fontWeight: 'bold' }}>
+														Total Cost
+													</TableCell>
 													<TableCell />
 													<TableCell sx={{ fontWeight: 'bold' }}>
 														${getTotalCost(product).toFixed(2)}
