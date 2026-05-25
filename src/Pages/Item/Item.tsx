@@ -64,6 +64,8 @@ export default function Item() {
 	>({});
 	const [itemName, setItemName] = useState('');
 	const [itemError, setItemError] = useState('');
+	const [csvError, setCsvError] = useState('');
+	const [csvSuccess, setCsvSuccess] = useState('');
 
 	useEffect(() => {
 		if (typeof window !== 'undefined' && window.localStorage) {
@@ -199,6 +201,144 @@ export default function Item() {
 		});
 	};
 
+	const handleCsvUpload = async (
+		event: React.ChangeEvent<HTMLInputElement>,
+	) => {
+		const file = event.target.files?.[0];
+		if (!file) {
+			return;
+		}
+
+		setCsvError('');
+		setCsvSuccess('');
+
+		const text = await file.text();
+		const rows = text
+			.split(/\r?\n/)
+			.map((row) => row.trim())
+			.filter(Boolean)
+			.map((row) => row.split(',').map((cell) => cell.trim()));
+
+		if (rows.length === 0) {
+			setCsvError('CSV file is empty or malformed.');
+			event.target.value = '';
+			return;
+		}
+
+		const header = rows[0].map((cell) => cell.toLowerCase());
+		const requiredHeaders = ['name', 'uid', 'price', 'count'];
+		const headerIndexes: Record<string, number> = {};
+
+		for (const required of requiredHeaders) {
+			const index = header.findIndex((cell) => cell === required);
+			if (index === -1) {
+				setCsvError(
+					`CSV must include header columns: Name, UID, Price, Count. Missing: ${required}`,
+				);
+				event.target.value = '';
+				return;
+			}
+			headerIndexes[required] = index;
+		}
+
+		const parsedRows = rows
+			.slice(1)
+			.filter((row) => row.some((cell) => cell !== ''));
+		if (parsedRows.length === 0) {
+			setCsvError('CSV does not contain any data rows.');
+			event.target.value = '';
+			return;
+		}
+
+		const importedRows = parsedRows.map((row) => {
+			const name = row[headerIndexes.name] ?? '';
+			const uid = row[headerIndexes.uid] ?? '';
+			const price = parseFloat(row[headerIndexes.price] ?? '0');
+			const count = parseInt(row[headerIndexes.count] ?? '0', 10);
+			return {
+				name: name.trim(),
+				uid: uid.trim(),
+				price: Number.isFinite(price) ? price : 0,
+				count: Number.isFinite(count) ? Math.max(0, count) : 0,
+			};
+		});
+
+		const validRows = importedRows.filter((row) => row.name && row.uid);
+		if (validRows.length === 0) {
+			setCsvError('CSV rows must include Name and UID values.');
+			event.target.value = '';
+			return;
+		}
+
+		const newEntryInputs: Record<
+			string,
+			{ uid: string; price: string; count: string }
+		> = {};
+		let importedCount = 0;
+		const nextItems = validRows.reduce<Item[]>(
+			(updated, row) => {
+				const existingItem = updated.find(
+					(item) => item.name.toLowerCase() === row.name.toLowerCase(),
+				);
+
+				if (existingItem) {
+					const uidExists = existingItem.entries.some(
+						(entry) => entry.uid === row.uid,
+					);
+					if (!uidExists) {
+						existingItem.entries = [
+							...existingItem.entries,
+							{
+								id: newId(),
+								uid: row.uid,
+								price: row.price,
+								count: row.count,
+							},
+						];
+						importedCount += 1;
+					}
+				} else {
+					// Only add a new item if UID is present
+					if (row.uid) {
+						const newItem = {
+							id: newId(),
+							name: row.name,
+							entries: [
+								{
+									id: newId(),
+									uid: row.uid,
+									price: row.price,
+									count: row.count,
+								},
+							],
+						};
+						updated.push(newItem);
+						newEntryInputs[newItem.id] = { uid: '', price: '0', count: '1' };
+						importedCount += 1;
+					}
+				}
+
+				return updated;
+			},
+			[...items],
+		);
+
+		setItems(nextItems);
+		setEntryInputs((prev) => ({
+			...prev,
+			...newEntryInputs,
+		}));
+
+		if (importedCount > 0) {
+			setCsvSuccess(`Imported ${importedCount} row(s).`);
+		} else {
+			setCsvError(
+				'No new rows were imported because matching UIDs already exist.',
+			);
+		}
+		event.target.value = '';
+	};
+
 	return (
 		<Box className="item" sx={{ padding: 3, maxWidth: 1000, margin: '0 auto' }}>
 			<Typography variant="h4" gutterBottom>
@@ -226,6 +366,31 @@ export default function Item() {
 								Add item
 							</Button>
 						</Stack>
+					</Stack>
+				</CardContent>
+			</Card>
+
+			<Card variant="outlined" sx={{ marginBottom: 4 }}>
+				<CardContent>
+					<Stack spacing={2}>
+						<Typography variant="body1">
+							Upload a CSV file formatted with columns: Name, UID, Price, and
+							Count. Matching Name values will add a UID/Price/Count entry to an
+							existing item. Non-matching names create a new item.
+						</Typography>
+						<Button variant="contained" component="label" fullWidth>
+							Upload CSV
+							<input
+								type="file"
+								accept=".csv,text/csv"
+								hidden
+								onChange={handleCsvUpload}
+							/>
+						</Button>
+						{csvError && <Typography color="error">{csvError}</Typography>}
+						{csvSuccess && (
+							<Typography color="success.main">{csvSuccess}</Typography>
+						)}
 					</Stack>
 				</CardContent>
 			</Card>
