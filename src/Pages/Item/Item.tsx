@@ -80,8 +80,8 @@ export default function Item() {
 	>({});
 	const [itemName, setItemName] = useState('');
 	const [itemError, setItemError] = useState('');
-	const [csvError, setCsvError] = useState('');
-	const [csvSuccess, setCsvSuccess] = useState('');
+	const [csvError, setCSVError] = useState('');
+	const [csvSuccess, setCSVSuccess] = useState('');
 
 	// Sorting state
 	const [sortField, setSortField] = useState<'name' | 'uid' | 'price'>('name');
@@ -240,7 +240,7 @@ export default function Item() {
 		});
 	};
 
-	const handleCsvUpload = async (
+	const handleCSVUpload = async (
 		event: React.ChangeEvent<HTMLInputElement>,
 	) => {
 		const file = event.target.files?.[0];
@@ -248,8 +248,8 @@ export default function Item() {
 			return;
 		}
 
-		setCsvError('');
-		setCsvSuccess('');
+		setCSVError('');
+		setCSVSuccess('');
 
 		const text = await file.text();
 		const rows = text
@@ -259,7 +259,7 @@ export default function Item() {
 			.map((row) => row.split(',').map((cell) => cell.trim()));
 
 		if (rows.length === 0) {
-			setCsvError('CSV file is empty or malformed.');
+			setCSVError('CSV file is empty or malformed.');
 			event.target.value = '';
 			return;
 		}
@@ -271,7 +271,7 @@ export default function Item() {
 		for (const required of requiredHeaders) {
 			const index = header.findIndex((cell) => cell === required);
 			if (index === -1) {
-				setCsvError(
+				setCSVError(
 					`CSV must include header columns: Name, UID, Price, Count. Missing: ${required}`,
 				);
 				event.target.value = '';
@@ -284,7 +284,7 @@ export default function Item() {
 			.slice(1)
 			.filter((row) => row.some((cell) => cell !== ''));
 		if (parsedRows.length === 0) {
-			setCsvError('CSV does not contain any data rows.');
+			setCSVError('CSV does not contain any data rows.');
 			event.target.value = '';
 			return;
 		}
@@ -304,7 +304,7 @@ export default function Item() {
 
 		const validRows = importedRows.filter((row) => row.name && row.uid);
 		if (validRows.length === 0) {
-			setCsvError('CSV rows must include Name and UID values.');
+			setCSVError('CSV rows must include Name and UID values.');
 			event.target.value = '';
 			return;
 		}
@@ -369,13 +369,17 @@ export default function Item() {
 		}));
 
 		if (importedCount > 0) {
-			setCsvSuccess(`Imported ${importedCount} row(s).`);
+			setCSVSuccess(`Imported ${importedCount} row(s).`);
 		} else {
-			setCsvError(
+			setCSVError(
 				'No new rows were imported because matching UIDs already exist.',
 			);
 		}
 		event.target.value = '';
+	};
+
+	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		console.log(event.target.value, 'event');
 	};
 
 	return (
@@ -383,6 +387,14 @@ export default function Item() {
 			<Typography variant="h4" gutterBottom>
 				Items
 			</Typography>
+
+			<TextField
+				label="Search items by name"
+				// value={search}
+				onChange={handleSearchChange}
+				size="small"
+				sx={{ mb: 2, background: '#fff', color: '#222', width: 300 }}
+			/>
 
 			<Card variant="outlined" sx={{ marginBottom: 4 }}>
 				<CardContent>
@@ -423,7 +435,7 @@ export default function Item() {
 								type="file"
 								accept=".csv,text/csv"
 								hidden
-								onChange={handleCsvUpload}
+								onChange={handleCSVUpload}
 							/>
 						</Button>
 						{csvError && <Typography color="error">{csvError}</Typography>}
