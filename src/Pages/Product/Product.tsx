@@ -22,6 +22,7 @@ import {
 	InputLabel,
 	Chip,
 } from '@mui/material';
+// import EtsyListings from '../../components/EtsyListings';
 import './Product.css';
 
 type NestedEntry = {
@@ -395,6 +396,7 @@ export default function Product() {
 					))}
 				</Stack>
 			)}
+			{/* <EtsyListings /> */}
 		</Box>
 	);
 }
