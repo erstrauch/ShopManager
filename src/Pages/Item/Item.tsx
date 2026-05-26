@@ -11,6 +11,7 @@ import type { SelectChangeEvent } from '@mui/material';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import ArrowUpward from '@mui/icons-material/ArrowUpward';
 import {
+	Autocomplete,
 	Box,
 	Button,
 	Card,
@@ -42,7 +43,6 @@ type Item = {
 	name: string;
 	entries: NestedEntry[];
 };
-
 function newId() {
 	return (
 		crypto?.randomUUID?.() ??
@@ -379,7 +379,7 @@ export default function Item() {
 	};
 
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		console.log(event.target.value, 'event');
+		console.log(event.target.value, 'type event');
 	};
 
 	return (
@@ -388,12 +388,18 @@ export default function Item() {
 				Items
 			</Typography>
 
-			<TextField
-				label="Search items by name"
-				// value={search}
-				onChange={handleSearchChange}
-				size="small"
-				sx={{ mb: 2, background: '#fff', color: '#222', width: 300 }}
+			<Autocomplete
+				id="search-autocomplete"
+				freeSolo
+				options={items.map((option) => option.name)}
+				renderInput={(params) => (
+					<TextField
+						sx={{ mb: 2, background: '#fff', color: '#222', width: 300 }}
+						{...params}
+						label="Search items"
+						onChange={handleSearchChange}
+					/>
+				)}
 			/>
 
 			<Card variant="outlined" sx={{ marginBottom: 4 }}>
